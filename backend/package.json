@@ -1,0 +1,15 @@
+{
+  "name": "veyora-ai-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Secure OpenAI proxy for the VEYORA Flutter app",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "start:env": "node --env-file=.env server.mjs",
+    "dev": "node --watch --env-file=.env server.mjs"
+  }
+}
