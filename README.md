@@ -208,7 +208,7 @@ npm run start:env
 Verify health:
 ```bash
 curl http://localhost:8787/health
-# Response: {"status":"ok","model":"gpt-4o-mini"}
+# Response: {"ok":true,"configured":true,"model":"gpt-4o-mini","authRequired":false}
 ```
 
 #### Step 2: Run Flutter with proxy parameters
