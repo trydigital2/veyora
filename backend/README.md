@@ -4,10 +4,21 @@ Small Node.js proxy that keeps the OpenAI key off mobile devices.
 
 ## Run
 
+### Local Node.js
 ```bash
 cd backend
 cp .env.example .env
 npm run start:env
+```
+
+### Docker
+```bash
+# Build and run with Docker
+docker build -t veyora-ai-proxy .
+docker run -p 8787:8787 --env-file .env veyora-ai-proxy
+
+# Or using docker-compose from repository root
+docker compose up -d
 ```
 
 Health check: `curl http://localhost:8787/health`

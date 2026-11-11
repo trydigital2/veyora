@@ -1,0 +1,19 @@
+services:
+  ai-proxy:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: veyora-ai-proxy
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - AI_PROXY_TOKEN=${AI_PROXY_TOKEN:-}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN:-*}
+      - RATE_LIMIT=${RATE_LIMIT:-30}
+    env_file:
+      - path: ./backend/.env
+        required: false
