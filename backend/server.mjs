@@ -283,55 +283,70 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && req.url === '/health') {
-    sendJson(res, 200, {
-      ok: true,
-      configured: Boolean(OPENAI_API_KEY),
-      model: OPENAI_MODEL,
-      authRequired: Boolean(AI_PROXY_TOKEN),
-    });
-    return;
-  }
-
-  if (req.method !== 'POST' || req.url !== '/api/ai') {
-    sendJson(res, 404, { error: 'Not found.' });
-    return;
-  }
-
-  if (!authorized(req)) {
-    sendJson(res, 401, { error: 'Unauthorized.' });
-    return;
-  }
-  if (!withinRateLimit(req)) {
-    sendJson(res, 429, { error: 'Too many requests. Please slow down.' });
-    return;
-  }
-  if (!OPENAI_API_KEY) {
-    sendJson(res, 503, { error: 'OPENAI_API_KEY is not configured on the proxy.' });
-    return;
-  }
-
-  try {
-    const raw = await readBody(req);
-    const body = JSON.parse(raw);
-    const task = body?.task;
-    const payload = body?.payload;
-    if (!TASKS.has(task)) {
-      sendJson(res, 400, { error: 'Unsupported task.' });
+  if (req.url === '/health') {
+    if (req.method === 'GET') {
+      sendJson(res, 200, {
+        ok: true,
+        configured: Boolean(OPENAI_API_KEY),
+        model: OPENAI_MODEL,
+        authRequired: Boolean(AI_PROXY_TOKEN),
+      });
       return;
     }
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      sendJson(res, 400, { error: 'A payload object is required.' });
+    cors(res);
+    res.setHeader('Allow', 'GET, OPTIONS');
+    res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'Method Not Allowed.' }));
+    return;
+  }
+
+  if (req.url === '/api/ai') {
+    if (req.method !== 'POST') {
+      cors(res);
+      res.setHeader('Allow', 'POST, OPTIONS');
+      res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Method Not Allowed.' }));
       return;
     }
 
-    const result = normalize(task, await callOpenAi(task, payload), payload);
-    sendJson(res, 200, { result });
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}]`, error.message);
-    const message = error instanceof SyntaxError ? 'Invalid JSON request body.' : 'AI request failed.';
-    sendJson(res, 502, { error: message });
+    if (!authorized(req)) {
+      sendJson(res, 401, { error: 'Unauthorized.' });
+      return;
+    }
+    if (!withinRateLimit(req)) {
+      sendJson(res, 429, { error: 'Too many requests. Please slow down.' });
+      return;
+    }
+    if (!OPENAI_API_KEY) {
+      sendJson(res, 503, { error: 'OPENAI_API_KEY is not configured on the proxy.' });
+      return;
+    }
+
+    try {
+      const raw = await readBody(req);
+      const body = JSON.parse(raw);
+      const task = body?.task;
+      const payload = body?.payload;
+      if (!TASKS.has(task)) {
+        sendJson(res, 400, { error: 'Unsupported task.' });
+        return;
+      }
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        sendJson(res, 400, { error: 'A payload object is required.' });
+        return;
+      }
+
+      const result = normalize(task, await callOpenAi(task, payload), payload);
+      sendJson(res, 200, { result });
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}]`, error.message);
+      const message = error instanceof SyntaxError ? 'Invalid JSON request body.' : 'AI request failed.';
+      sendJson(res, 502, { error: message });
+    }
+    return;
   }
+
+  sendJson(res, 404, { error: 'Not found.' });
 });
 
 export {
@@ -353,6 +368,21 @@ export {
 const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isDirectRun) {
+  const shutdown = (signal) => {
+    console.log(`\nReceived ${signal}. Gracefully stopping VEYORA proxy...`);
+    server.close(() => {
+      console.log('HTTP server closed successfully.');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('Forced shutdown: active connections timed out.');
+      process.exit(1);
+    }, 10_000).unref();
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
   server.listen(PORT, () => {
     console.log(`VEYORA AI proxy listening on http://localhost:${PORT}`);
     console.log(`Model: ${OPENAI_MODEL} · configured: ${Boolean(OPENAI_API_KEY)}`);

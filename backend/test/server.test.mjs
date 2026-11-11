@@ -1,6 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { Readable } from 'node:stream';
 import {
+  server,
   score,
   strings,
   truncate,
@@ -10,6 +12,50 @@ import {
   promptFor,
   TASKS,
 } from '../server.mjs';
+
+function executeRequest({ method = 'GET', url = '/health', headers = {}, body = '' }) {
+  return new Promise((resolve) => {
+    const req = new Readable({
+      read() {
+        if (body) this.push(body);
+        this.push(null);
+      },
+    });
+    req.method = method;
+    req.url = url;
+    req.headers = Object.fromEntries(
+      Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
+    );
+    req.socket = { remoteAddress: '127.0.0.1' };
+
+    let statusCode = 200;
+    const resHeaders = {};
+    const chunks = [];
+
+    const res = {
+      setHeader(key, value) {
+        resHeaders[key.toLowerCase()] = value;
+      },
+      writeHead(status, headers = {}) {
+        statusCode = status;
+        for (const [k, v] of Object.entries(headers)) {
+          resHeaders[k.toLowerCase()] = v;
+        }
+      },
+      end(data) {
+        if (data) chunks.push(Buffer.from(data));
+        resolve({
+          status: statusCode,
+          headers: resHeaders,
+          body: Buffer.concat(chunks).toString('utf8'),
+        });
+      },
+    };
+
+    const handler = server.listeners('request')[0];
+    handler(req, res);
+  });
+}
 
 describe('Backend Utility Functions', () => {
   test('score bounds numbers between 0 and 100', () => {
@@ -156,5 +202,38 @@ describe('Task Validation and Normalization', () => {
     });
     assert.ok(coverPrompt.includes('Lead Developer'));
     assert.ok(coverPrompt.includes('TechCorp'));
+  });
+});
+
+describe('HTTP Server Endpoint Routing', () => {
+  test('GET /health returns 200 with server status', async () => {
+    const res = await executeRequest({ method: 'GET', url: '/health' });
+    assert.equal(res.status, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.ok, true);
+    assert.equal(typeof body.model, 'string');
+  });
+
+  test('POST /health returns 405 Method Not Allowed', async () => {
+    const res = await executeRequest({ method: 'POST', url: '/health' });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.allow, 'GET, OPTIONS');
+  });
+
+  test('OPTIONS request returns 204 No Content with CORS', async () => {
+    const res = await executeRequest({ method: 'OPTIONS', url: '/api/ai' });
+    assert.equal(res.status, 204);
+    assert.equal(res.headers['access-control-allow-origin'], '*');
+  });
+
+  test('GET /api/ai returns 405 Method Not Allowed', async () => {
+    const res = await executeRequest({ method: 'GET', url: '/api/ai' });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.allow, 'POST, OPTIONS');
+  });
+
+  test('GET /unknown-route returns 404 Not Found', async () => {
+    const res = await executeRequest({ method: 'GET', url: '/non-existent' });
+    assert.equal(res.status, 404);
   });
 });
