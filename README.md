@@ -9,6 +9,7 @@ An AI-powered career copilot built with **Flutter**, designed to empower job see
 [![Flutter](https://img.shields.io/badge/Flutter-3.41+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11+-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Riverpod](https://img.shields.io/badge/State-Riverpod%202.6-blueviolet)](https://riverpod.dev)
+[![CI](https://github.com/trydigital2/veyora/actions/workflows/ci.yml/badge.svg)](https://github.com/trydigital2/veyora/actions/workflows/ci.yml)
 [![Platform](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20Desktop%20%7C%20Web-blue)](#platform-support)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Feature--First-success)](https://flutter.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -203,7 +204,11 @@ AI_PROXY_TOKEN=your-custom-shared-secret-token
 
 Start the server:
 ```bash
+# Option A: Directly with Node.js
 npm run start:env
+
+# Option B: With Docker Compose (from repository root)
+docker compose up -d
 ```
 Verify health:
 ```bash
@@ -230,7 +235,20 @@ flutter run \
 
 ```text
 veyora/
+├── .github/
+│   ├── workflows/ci.yml       # GitHub Actions CI workflow (Flutter & Node)
+│   ├── ISSUE_TEMPLATE/        # Standardized bug & feature issue templates
+│   └── pull_request_template.md
 ├── android/                   # Native Android host project
+├── backend/                   # Node.js OpenAI Secure Proxy
+│   ├── Dockerfile             # Alpine container definition
+│   ├── .dockerignore          # Docker build exclusions
+│   ├── server.mjs             # Proxy server, task prompts, validation
+│   ├── package.json           # Backend scripts and test command
+│   ├── test/                  # Node.js native unit test suite
+│   ├── .env.example           # Backend environment template
+│   └── README.md              # Backend documentation & Docker guide
+├── docker-compose.yml         # Container orchestration for local proxy
 ├── ios/                       # Native iOS host project
 ├── lib/
 │   ├── app.dart               # App entrypoint, MaterialApp & theme routing
@@ -253,30 +271,39 @@ veyora/
 │       ├── onboarding/        # Animated splash & introduction walkthrough
 │       ├── profile/           # User profile, settings, and subscription tier
 │       └── resume/            # Analyzer, builder, job matcher, cover letter
-├── backend/                   # Node.js OpenAI Secure Proxy
-│   ├── server.mjs             # Proxy server, task prompts, validation
-│   ├── package.json           # Backend scripts and dependencies
-│   ├── .env.example           # Backend environment template
-│   └── README.md              # Backend documentation
 ├── test/
 │   ├── widget_test.dart       # App startup & navigation smoke tests
 │   └── unit/                  # Unit tests for validators & LocalAiEngine
 ├── analysis_options.yaml      # Dart analysis and linter configuration
-└── pubspec.yaml               # Flutter package configuration & dependencies
+├── CODE_OF_CONDUCT.md         # Contributor Covenant Code of Conduct
+├── CONTRIBUTING.md            # Community contribution guide & PR workflow
+├── LICENSE                    # MIT License
+├── pubspec.yaml               # Flutter package configuration & dependencies
+└── SECURITY.md                # Security policy & reporting guidelines
 ```
 
 ---
 
 ## 🧪 Testing & Quality Assurance
 
-Maintain code quality and verify integrity using the Flutter toolchain:
+Maintain code quality and verify integrity using the Flutter and Node test suites:
 
+### Flutter Application Testing
 ```bash
+# Verify code formatting
+dart format --output=none --set-exit-if-changed .
+
 # Run static code analysis
 flutter analyze
 
 # Run unit and widget tests
 flutter test
+```
+
+### Backend Proxy Testing
+```bash
+# Run backend test suite via native node:test runner
+cd backend && npm test
 ```
 
 ### Test Coverage Highlights
