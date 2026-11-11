@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -333,7 +334,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`VEYORA AI proxy listening on http://localhost:${PORT}`);
-  console.log(`Model: ${OPENAI_MODEL} · configured: ${Boolean(OPENAI_API_KEY)}`);
-});
+export {
+  server,
+  cors,
+  sendJson,
+  safeEqual,
+  authorized,
+  withinRateLimit,
+  truncate,
+  strings,
+  score,
+  wordCount,
+  normalize,
+  promptFor,
+  TASKS,
+};
+
+const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isDirectRun) {
+  server.listen(PORT, () => {
+    console.log(`VEYORA AI proxy listening on http://localhost:${PORT}`);
+    console.log(`Model: ${OPENAI_MODEL} · configured: ${Boolean(OPENAI_API_KEY)}`);
+  });
+}
